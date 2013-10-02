@@ -400,6 +400,82 @@ doSomethingAsync()              // gets called
         </section>
 
         <section>
+          <section>
+            <h2>Neat things in RSVP.js</h2>
+
+            <ul>
+              <li class='active'>`.fail()`</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>RSVP.js .fail</h2>
+
+            <p>An alias for .then(null, errorHandler)</p>
+            <pre class='smaller'><code data-trim contenteditable>
+// this:
+doSomethingAsync()
+  .then( doSomethingElseAsync )
+  .then( null, rejectionHandler );
+
+// Is the same as this:
+  doSomethingAsync()
+    .then( doSomethingElseAsync )
+    .fail( rejectionHandler );
+            </code></pre>
+
+          </section>
+
+          <section>
+            <h2>Neat things in RSVP.js</h2>
+
+            <ul>
+              <li>`.fail()`</li>
+              <li class='active'>`.rethrow()`</li>
+            </ul>
+
+            <pre class='smaller'><code data-trim contenteditable>
+try {
+  doSomethingAsync()
+    .then( function(){ throw new Error('swallowed error');} )
+    .then( null, function(e){
+      console.error("The error is caught and handled here.");
+      throw e; // doesn't make it out of the promise chain
+    });
+} catch(e) {
+  // this code is never called
+}
+
+try {
+  doSomethingAsync()
+    .then( function(){ throw new Error('swallowed error');} )
+    .then( null, function(e) { RSVP.rethrow(e); });
+} catch(e) {
+  console.error("I caught the error: " + e); // this code is called
+}
+            </code></pre>
+          </section>
+        </section>
+
+        <section>
+          <h2>How to use promises in your own code</h2>
+
+          <ul>
+            <li>Include rsvp.js from [https://github.com/tildeio/rsvp.js](https://github.com/tildeio/rsvp.js)</li>
+            <li>Return a new RSVP.Promise from your async code, `resolve()`-ing or `reject()`-ing as appropriate</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>How to use promises in your own code part 2</h2>
+
+          <p>Example async code</p>
+
+          <p>Using rsvp.js</p>
+
+        </section>
+
+        <section>
           <h2>Thank you</h2>
 
           <p>
