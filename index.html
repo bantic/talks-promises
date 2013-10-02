@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+
+    <title>Promises using RSVP.js | Cory Forsyth</title>
+
+    <meta name="description" content="A talk explaining how promises work using RSVP.js, by Cory Forsyth">
+    <meta name="author" content="Cory Forsyth">
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="stylesheet" href="css/reveal.min.css">
+    <link rel="stylesheet" href="css/theme/default.css" id="theme">
+
+    <!-- For syntax highlighting -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+
+    <!-- If the query includes 'print-pdf', use the PDF print sheet -->
+    <script>
+      document.write( '<link rel="stylesheet" href="css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );
+    </script>
+
+    <!--[if lt IE 9]>
+    <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+
+    <style>
+      pre.smaller code {
+        font-size: smaller;
+      }
+
+      li.active {
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <div class="reveal">
+
+      <div class="slides">
+        <section>
+          <h1>Promises, Promises</h1>
+          <h3>An exploration of Promises/A+ using RSVP.js</h3>
+          <p>
+            <small>Presented by <a href="http://coryforsyth.com/">Cory Forsyth</a> / <a href="http://twitter.com/bantic">@bantic</a></small>
+          </p>
+        </section>
+
+        <section>
+          <h2>What are promises?</h2>
+          <blockquote cite="http://promisesaplus.com/">
+            &ldquo;
+            A promise represents the eventual result of an asynchronous operation.
+            The primary way of interacting with a promise is through its `then` method,
+            which registers callbacks to receive either a promise’s eventual value
+            or the reason why the promise cannot be fulfilled.
+            &rdquo;
+          </blockquote>
+
+          <p>
+            <small>From <a href='http://promisesaplus.com/'>http://promisesaplus.com/</a></small>
+          </p>
+        </section>
+
+        <section>
+          <h2>Promise-based Code</h2>
+          <h3>What does it look like?</h3>
+
+          <pre><code data-trim contenteditable>
+var successHandler = function(successValue){
+  console.log("I am called when the promise successfully resolves.");
+};
+
+var rejectionHandler = function(reason){
+  console.log("I am called when the promise is rejected for 'reason'.");
+};
+
+// doSomethingAsync() returns a Promise
+doSomethingAsync().then( successHandler, rejectionHandler );
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>What are promises? Part 2</h2>
+          <p>
+            A pattern in javascript for coordinating asynchronous activity.
+          </p>
+
+          <p>Examples:</p>
+          <ul>
+            <li>Open a connection to a database, <b>then</b> do something else.</li>
+            <li>Load some JSON, <b>then</b> do something with the result.</li>
+          </ul>
+        </section>
+
+        <section>
+          <section>
+            <h2>Other patterns for dealing with asynchronicity</h2>
+
+            <ul>
+              <li>Callbacks</li>
+              <li>Event-based</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Example callback-based code</h2>
+
+            <pre><code data-trim contenteditable>
+connectToDb(
+  function(connection) { // got connection
+    connection.doSomething();
+  }, function(err) {     // got error
+    console.error("Could not connect to db: " + err);
+  }
+);
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>Example evented code</h2>
+
+            <pre><code data-trim contenteditable>
+var transferComplete = function(){
+  var json = JSON.parse(this.responseText)
+  console.log('transferComplete, user name is: ' + json.name);
+};
+
+var transferFailed = function(){
+  console.error('transferFailed');
+};
+
+var xhr = new XMLHttpRequest();
+xhr.open('GET', 'https://api.github.com/users/bantic', true);
+xhr.addEventListener("load", transferComplete, false);
+xhr.addEventListener("error", transferFailed, false);
+
+xhr.send();
+            </code></pre>
+          </section>
+
+        </section>
+
+
+        <section>
+          <section>
+            <h2>Cool Things About Promises</h2>
+
+            <ul>
+              <li class='active'>Flattening 'rightward drift'</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Flattening rightward drift</h2>
+            <h3>Simple callback-based code</h3>
+
+            <p>Callback version</p>
+            <pre><code data-trim contenteditable>
+connectToDb(
+  function(connection) { // got connection
+    connection.doSomething();
+  }, function(err) {     // got error
+    console.error("Could not connect to db: " + err);
+  }
+);
+            </code></pre>
+
+            <p>Promise version</p>
+            <pre class='fragment'><code data-trim contenteditable>
+connectToDb().then(
+  function(connection){ // got connection
+    connection.doSomething();
+  }, function(err) {    // got error
+    console.error("Could not connect to db: " + err);
+  }
+);
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>Flattening rightward drift</h2>
+            <h3>Nested callback-based code</h3>
+
+            <pre class='smaller'><code data-trim contenteditable>
+connectToDb(function(connection) { // got connection
+  connection.doSomething(function(result) {
+      result.name = 'new name';
+      result.save(function(){
+        console.log('saved successfully');
+      }, function(err){
+        console.error('error saving');
+      });
+    }, function(err) {
+      console.error("Error doing something");
+    })
+  }, function(err) {     // got error
+    console.error("Could not connect to db: " + err);
+  }
+);
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>Flattening rightward drift</h2>
+            <h3>Nested callback-based code</h3>
+
+            <p>Using promises</p>
+            <pre class='smaller'><code data-trim contenteditable>
+connectToDb().then(function(connection){ // connectToDb returns a promise
+    return connection.doSomething();     // connection.doSomething returns a promise
+}).then(function(result){
+    result.name = 'new name';
+    return result.save();                // result.save returns a promise
+}).then(function(){
+   console.log('saved successfully.');
+ }, function(err){
+   console.error("Error.");
+ }
+);
+            </code></pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Cool Things About Promises</h2>
+
+            <ul>
+              <li>Flattening 'rightward drift'</li>
+              <li class='active'>Linearizing code</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Linearizing code</h2>
+            <h3>Evented Code Part 1</h3>
+            <pre><code data-trim contenteditable>
+var App = function(){
+  this.init = function(){
+    this.loadData();
+  };
+
+  this.start = function(data){
+    console.log("Started for user: " + data.name);
+  };
+
+  // many more lines ...
+  // How does the app actually start?
+};
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>Linearizing code</h2>
+            <h3>Evented Code Part 2</h3>
+            <pre class='smaller'><code data-trim contenteditable>
+var App = function(){
+  this.init = function(){
+    this.loadData();
+  };
+  this.start = function(data){
+    console.log("Started for user: " + data.name);
+  };
+  // ... many lines later
+  // ... oh, loadData calls start
+
+  this.loadData = function(){
+    var that = this;
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'https://api.github.com/users/bantic', true);
+    xhr.addEventListener('load', function(){
+      var data = JSON.parse(this.responseText);
+      that.start(data);
+    }, false);
+    xhr.send();
+  };
+};
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>Linearizing Code</h2>
+            <h3>Promises simplify Evented Code</h3>
+            <pre class='smaller'><code data-trim contenteditable>
+var App = function(){
+  this.init = function(){
+    var that = this;
+    this.loadData().then( function(data) {
+      that.start(data);
+    };
+  };
+  this.start = function(data){
+    console.log("Started for user: " + data.name);
+  };
+  // ... many lines
+
+  this.loadData = function(){
+    return new RSVP.Promise( function(resolve, reject){
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'https://api.github.com/users/bantic', true);
+      xhr.addEventListener('load', function(){
+        var data = JSON.parse(this.responseText);
+        resolve(data);
+      }, false);
+      xhr.send();
+    });
+  };
+};
+
+            </code></pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Cool Things About Promises</h2>
+
+            <ul>
+              <li>Flattening 'rightward drift'</li>
+              <li>Linearizing code</li>
+              <li class='active'>Simple error handling</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Simple error handling</h2>
+            <h3>Promise Resolution Spec</h2>
+            <pre><code>
+promise2 = promise1.then(onFulfilled, onRejected);
+            </code></pre>
+
+            <blockquote cite='http://promisesaplus.com/#point-47'>
+              2.2.7.2 If either onFulfilled or onRejected throws an exception e, promise2 must be rejected with e as the reason.
+            </blockquote>
+            <blockquote cite='http://promisesaplus.com/#point-47'>
+              2.2.7.4 If onRejected is not a function and promise1 is rejected, promise2 must be rejected with the same reason.
+            </blockquote>
+          </section>
+
+          <section>
+            <h2>Simple error handling</h2>
+            <h3>Rejected promises propagate through the chain</h3>
+
+            <p>
+            When any promise in a chain of promises throws an exception,
+            that promise will be rejected and the rest in the chain will be
+            rejected for the same reason.
+            </p>
+
+            <p>
+            The rejection "falls through" until there is a rejection handler.
+            </p>
+          </section>
+
+          <section>
+            <h2>Simple error handling</h2>
+            <h3>Exceptions propagate to the next available error handler</h3>
+            <pre class='smaller'><code data-trim contenteditable>
+var rejectedPromiseHandler = function(reason){
+  console.error("Rejected with reason: " + reason);
+};
+
+doSomethingAsync()              // gets called
+  .then( doSomethingAsync )     // gets called
+  .then( function(){ throw new Error("Oops!"); } )
+  .then( doSomethingAsync )     // never gets called,
+                                // and since there is no rejection handler,
+                                // the rejection 'falls through' to:
+  .then( null, rejectedPromiseHandler ); // rejectedPromiseHandler gets called
+                                         // with the thrown exception as its argument
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>Simple error handling</h2>
+            <h3>Rejected promises also propagate to the next available error handler</h3>
+            <pre class='smaller'><code data-trim contenteditable>
+var rejectedPromiseHandler = function(reason){
+  console.error("Rejected with reason: " + reason);
+};
+
+doSomethingAsync()              // gets called
+  .then( doSomethingAsync )     // gets called
+  .then( function(){ return RSVP.reject('rejected'); } )
+  .then( doSomethingAsync )     // never gets called,
+                                // and since there is no rejection handler,
+                                // the rejection 'falls through' to:
+  .then( null, rejectedPromiseHandler ); // rejectedPromiseHandler gets called
+                                         // with argument 'rejected'
+            </code></pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Neat things in RSVP.js</h2>
+
+            <ul>
+              <li class='active'>`.fail()`</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>RSVP.js .fail</h2>
+
+            <p>An alias for .then(null, errorHandler)</p>
+            <pre class='smaller'><code data-trim contenteditable>
+// this:
+doSomethingAsync()
+  .then( doSomethingElseAsync )
+  .then( null, rejectionHandler );
+
+// Is the same as this:
+  doSomethingAsync()
+    .then( doSomethingElseAsync )
+    .fail( rejectionHandler );
+            </code></pre>
+
+          </section>
+
+          <section>
+            <h2>Neat things in RSVP.js</h2>
+
+            <ul>
+              <li>`.fail()`</li>
+              <li class='active'>`.rethrow()`</li>
+            </ul>
+
+            <p>
+              Normally, a rejected promise will be handled by the
+              first rejection handler.
+            </p>
+            <pre class='smaller'><code data-trim contenteditable>
+doSomethingAsync()
+  .then( function(){ throw new Error('error');} )
+  .then( null, function(e){
+    console.error("The error is caught and handled here.");
+    throw e;
+  })
+  .then( null, function(e){
+    // this code doesn't execute because the promise chain has
+    // already been rejected
+  });
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>Neat things in RSVP.js</h2>
+
+            <ul>
+              <li>`.fail()`</li>
+              <li class='active'>`.rethrow()`</li>
+            </ul>
+
+            <p>
+            But if you use RSVP.rethrow() then the rejection propagates
+            to subsequent rejection handlers.
+            </p>
+
+            <pre class='smaller'><code data-trim contenteditable>
+doSomethingAsync()
+  .then( function(){ throw new Error('error');} )
+  .then( null, function(e){
+    console.error("The error is caught and handled here.");
+    RSVP.rethrow(e);
+  })
+  .then( null, function(e){
+    console.error("This rejection handler executes, also.");
+  });
+            </code></pre>
+
+            <p>
+            This can be very helpful in debugging.
+            </p>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>How to use promises in your own code</h2>
+
+            <ol>
+              <li>Include rsvp.js from <a href='https://github.com/tildeio/rsvp.js'>https://github.com/tildeio/rsvp.js</a></li>
+              <li>Return a new RSVP.Promise from your async code</li>
+              <li>Where you would have used a callback or event, use `resolve()`-ing or `reject()`-ing instead.</li>
+            </ol>
+          </section>
+
+          <section>
+            <h2>How to use promises in your own code</h2>
+            <h3>Example async code</h3>
+
+            <pre class='smaller'><code data-trim contenteditable>
+var async = function(callback){
+  setTimeout( function(){
+    callback();
+  }, 1000);
+};
+
+async( function(){
+  console.log("This happens after 1000ms");
+});
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>How to use promises in your own code</h2>
+            <h3>Example async code using rsvp.js</h3>
+
+            <pre class='smaller'><code data-trim contenteditable>
+var asyncWithPromise = function(){
+  return new RSVP.Promise( function(resolve, reject){
+    setTimeout( function(){
+      resolve();
+    }, 1000);
+  });
+};
+
+asyncWithPromise().then( function(){
+  console.log("This happens after 1000ms");
+});
+            </code></pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>How to use promises in your own code</h2>
+            <h3>Chaining promises</h3>
+
+            <p>Gotcha: Make sure you return a promise if the code is async.</p>
+
+            <pre class='smaller'><code data-trim contenteditable>
+  asyncWithPromise().then( function(){     // happens first
+    return asyncWithPromise();             // happens after the first finishes
+  }).then( function() {
+    return asyncWithPromise();             // happens after the second finishes
+  });
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>How to use promises in your own code</h2>
+            <h3>Chaining promises with non-promise return values</h3>
+
+            <p>It is ok to return non-promise values from non-async code.</p>
+
+            <pre class='smaller'><code data-trim contenteditable>
+  asyncWithPromise().then( function(){     // happens first
+    doSomethingSynchronous();
+    return someValue;                      // not returning a promise
+  }).then( function() {
+    return asyncWithPromise();             // returns a promise, which
+                                           // gets assimilated into the chain.
+                                           // The next 'then' doesn't fire until
+                                           // this promise is resolved.
+
+  }).then( function() {                    // this fires after the asyncWithPromise
+                                           // above resolves.
+    doSomethingElseSynchronous();
+    return someOtherValue;
+  });;
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>How to use promises in your own code</h2>
+            <h3>How return values propagate a chain of `.then()`'s</h3>
+
+            <p>If return value is a promise, its 'success' value
+            is passed to the next `then()`</p>
+
+            <p>
+              If return value is a non-promise, that value is
+              given to the next `then()`
+            </p>
+
+            <pre 'smaller'><code data-trim contenteditable>
+  asyncWithPromise().then( function(successValue){  // successValue is whatever
+                                                    // asyncWithPromise `resolve()`'d with
+    return true;
+  }).then( function(successValue) {                 // successValue is true
+    return anotherAsyncWithPromise();
+  }).then( function(successValue) {                 // successValue is whatever
+                                                    // anotherAsyncWithPromise
+                                                    // `resolve()`'d with
+    return true;
+  });;
+            </code></pre>
+          </section>
+
+          <section>
+            <img src='lib/images/promises.png' width='1050' height'631' />
+          </section>
+        </section>
+
+        <section>
+          <h2>Wrapping non-promise code with rsvp-tools</h2>
+          <p>
+            <a href='https://github.com/mixonic/rsvp-tools'>https://github.com/mixonic/rsvp-tools</a>
+            is a library we created with a set of wrappers to:
+          </p>
+
+          <ul>
+            <li>turn callback-based APIs into promise-based</li>
+            <li>turn event-based APIs into promise-based</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Thank you</h2>
+
+          <p>
+            You can view this talk online at:<br>
+          <span style='font-size:larger'>
+            <a href='http://bit.ly/utahjs-promises'>http://bit.ly/utahjs-promises</a>
+          </span>
+          </p>
+        </section>
+
+
+      </div>
+
+    </div>
+
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.min.js"></script>
+
+    <script>
+
+      // Full list of configuration options available here:
+      // https://github.com/hakimel/reveal.js#configuration
+      Reveal.initialize({
+        controls: true,
+        progress: true,
+        history: true,
+        center: true,
+
+        theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+        transition: Reveal.getQueryHash().transition || 'default', // default/cube/page/concave/zoom/linear/fade/none
+
+        // Optional libraries used to extend on reveal.js
+        dependencies: [
+          { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+          { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+          { src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+          { src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+        ]
+      });
+
+    </script>
+
+  </body>
+</html>
