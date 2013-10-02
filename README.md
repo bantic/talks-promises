@@ -2,6 +2,8 @@
 
 ### This is a talk about using the javascript Promises pattern with RSVP.js
 
+View the presentation [here](http://bantic.github.io/talks-promises/).
+
 This talk was given at the UtahJS meetup on October 3, 2013.
 
 I am Cory Forsyth and you are welcome to contact me with questions on
