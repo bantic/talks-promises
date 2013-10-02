@@ -575,26 +575,44 @@ asyncWithPromise().then( function(){
             <h2>How to use promises in your own code</h2>
             <h3>How return values propagate a chain of `.then()`'s</h3>
 
-            <p>If a `then()`'s success handler returns a promise,
-               the success handler for the next `then()` gets the
-               promise's `resolve()`'d value.
-            </p>
+            <p>If return value is a promise, its 'success' value
+            is passed to the next `then()`</p>
 
             <p>
-              If a `then's` success handler returns a non-promise,
-              the success handler for the next `then()` gets that same return value
+              If return value is a non-promise, that value is
+              given to the next `then()`
             </p>
 
-            <pre class='smaller'><code data-trim contenteditable>
-  asyncWithPromise().then( function(successValue){  // successValue is whatever asyncWithPromise `resolve()`'d with
+            <pre 'smaller'><code data-trim contenteditable>
+  asyncWithPromise().then( function(successValue){  // successValue is whatever
+                                                    // asyncWithPromise `resolve()`'d with
     return true;
   }).then( function(successValue) {                 // successValue is true
     return anotherAsyncWithPromise();
-  }).then( function(successValue) {                 // successValue is whatever anotherAsyncWithPromise `resolve()`'d with
+  }).then( function(successValue) {                 // successValue is whatever
+                                                    // anotherAsyncWithPromise
+                                                    // `resolve()`'d with
     return true;
   });;
             </code></pre>
           </section>
+
+          <section>
+            <img src='lib/images/promises.png' width='1050' height'631' />
+          </section>
+        </section>
+
+        <section>
+          <h2>Wrapping non-promise code with rsvp-tools</h2>
+          <p>
+            <a href='https://github.com/mixonic/rsvp-tools'>https://github.com/mixonic/rsvp-tools</a>
+            is a library we created with a set of wrappers to:
+          </p>
+
+          <ul>
+            <li>turn callback-based APIs into promise-based</li>
+            <li>turn event-based APIs into promise-based</li>
+          </ul>
         </section>
 
         <section>
