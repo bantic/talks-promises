@@ -33,6 +33,10 @@
       pre.smaller code {
         font-size: smaller;
       }
+
+      li.active {
+        font-weight: bold;
+      }
     </style>
   </head>
 
@@ -150,7 +154,7 @@ xhr.send();
             <h2>Cool Things About Promises</h2>
 
             <ul>
-              <li>Flattening 'rightward drift'</li>
+              <li class='active'>Flattening 'rightward drift'</li>
             </ul>
           </section>
 
@@ -228,7 +232,7 @@ connectToDb().then(function(connection){
 
             <ul>
               <li>Flattening 'rightward drift'</li>
-              <li>Linearizing code</li>
+              <li class='active'>Linearizing code</li>
             </ul>
           </section>
 
@@ -319,23 +323,79 @@ var App = function(){
             <ul>
               <li>Flattening 'rightward drift'</li>
               <li>Linearizing code</li>
-              <li>Simple error handling</li>
+              <li class='active'>Simple error handling</li>
             </ul>
           </section>
 
           <section>
             <h2>Simple error handling</h2>
-            <h3>Errors propagate to the next error handler</h3>
+            <h3>Promise Resolution Spec</h2>
+            <pre><code>
+promise2 = promise1.then(onFulfilled, onRejected);
+            </code></pre>
+
+            <blockquote cite='http://promisesaplus.com/#point-47'>
+              2.2.7.2 If either onFulfilled or onRejected throws an exception e, promise2 must be rejected with e as the reason.
+            </blockquote>
+            <blockquote cite='http://promisesaplus.com/#point-47'>
+              2.2.7.4 If onRejected is not a function and promise1 is rejected, promise2 must be rejected with the same reason.
+            </blockquote>
+          </section>
+
+          <section>
+            <h2>Simple error handling</h2>
+            <h3>Rejected promises propagate through the chain</h3>
+
+            <p>
+            When any promise in a chain of promises throws an exception,
+            that promise will be rejected and the rest in the chain will be
+            rejected for the same reason.
+            </p>
+
+            <p>
+            The rejection "falls through" until there is a rejection handler.
+            </p>
+          </section>
+
+          <section>
+            <h2>Simple error handling</h2>
+            <h3>Exceptions propagate to the next available error handler</h3>
             <pre class='smaller'><code data-trim contenteditable>
+var rejectedPromiseHandler = function(reason){
+  console.error("Rejected with reason: " + reason);
+};
+
 doSomethingAsync()              // gets called
   .then( doSomethingAsync )     // gets called
   .then( function(){ throw new Error("Oops!"); } )
-  .then( doSomethingAsync )     // never gets called
-  .then( null, function(reason) {
-    console.error("Caught error: " + reason);
-  });
+  .then( doSomethingAsync )     // never gets called,
+                                // and since there is no rejection handler,
+                                // the rejection 'falls through' to:
+  .then( null, rejectedPromiseHandler ); // rejectedPromiseHandler gets called
+                                         // with the thrown exception as its argument
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>Simple error handling</h2>
+            <h3>Rejected promises also propagate to the next available error handler</h3>
+            <pre class='smaller'><code data-trim contenteditable>
+var rejectedPromiseHandler = function(reason){
+  console.error("Rejected with reason: " + reason);
+};
+
+doSomethingAsync()              // gets called
+  .then( doSomethingAsync )     // gets called
+  .then( function(){ return RSVP.reject('rejected'); } )
+  .then( doSomethingAsync )     // never gets called,
+                                // and since there is no rejection handler,
+                                // the rejection 'falls through' to:
+  .then( null, rejectedPromiseHandler ); // rejectedPromiseHandler gets called
+                                         // with argument 'rejected'
             </code></pre>
         </section>
+        </section>
+
 
       </div>
 
