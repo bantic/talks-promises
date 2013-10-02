@@ -434,45 +434,167 @@ doSomethingAsync()
               <li class='active'>`.rethrow()`</li>
             </ul>
 
+            <p>
+              Normally, a rejected promise will be handled by the
+              first rejection handler.
+            </p>
             <pre class='smaller'><code data-trim contenteditable>
-try {
-  doSomethingAsync()
-    .then( function(){ throw new Error('swallowed error');} )
-    .then( null, function(e){
-      console.error("The error is caught and handled here.");
-      throw e; // doesn't make it out of the promise chain
-    });
-} catch(e) {
-  // this code is never called
-}
+doSomethingAsync()
+  .then( function(){ throw new Error('error');} )
+  .then( null, function(e){
+    console.error("The error is caught and handled here.");
+    throw e;
+  })
+  .then( null, function(e){
+    // this code doesn't execute because the promise chain has
+    // already been rejected
+  });
+            </code></pre>
+          </section>
 
-try {
-  doSomethingAsync()
-    .then( function(){ throw new Error('swallowed error');} )
-    .then( null, function(e) { RSVP.rethrow(e); });
-} catch(e) {
-  console.error("I caught the error: " + e); // this code is called
-}
+          <section>
+            <h2>Neat things in RSVP.js</h2>
+
+            <ul>
+              <li>`.fail()`</li>
+              <li class='active'>`.rethrow()`</li>
+            </ul>
+
+            <p>
+            But if you use RSVP.rethrow() then the rejection propagates
+            to subsequent rejection handlers.
+            </p>
+
+            <pre class='smaller'><code data-trim contenteditable>
+doSomethingAsync()
+  .then( function(){ throw new Error('error');} )
+  .then( null, function(e){
+    console.error("The error is caught and handled here.");
+    RSVP.rethrow(e);
+  })
+  .then( null, function(e){
+    console.error("This rejection handler executes, also.");
+  });
+            </code></pre>
+
+            <p>
+            This can be very helpful in debugging.
+            </p>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>How to use promises in your own code</h2>
+
+            <ol>
+              <li>Include rsvp.js from <a href='https://github.com/tildeio/rsvp.js'>https://github.com/tildeio/rsvp.js</a></li>
+              <li>Return a new RSVP.Promise from your async code</li>
+              <li>Where you would have used a callback or event, use `resolve()`-ing or `reject()`-ing instead.</li>
+            </ol>
+          </section>
+
+          <section>
+            <h2>How to use promises in your own code</h2>
+            <h3>Example async code</h3>
+
+            <pre class='smaller'><code data-trim contenteditable>
+var async = function(callback){
+  setTimeout( function(){
+    callback();
+  }, 1000);
+};
+
+async( function(){
+  console.log("This happens after 1000ms");
+});
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>How to use promises in your own code</h2>
+            <h3>Example async code using rsvp.js</h3>
+
+            <pre class='smaller'><code data-trim contenteditable>
+var asyncWithPromise = function(){
+  return new RSVP.Promise( function(resolve, reject){
+    setTimeout( function(){
+      resolve();
+    }, 1000);
+  });
+};
+
+asyncWithPromise().then( function(){
+  console.log("This happens after 1000ms");
+});
             </code></pre>
           </section>
         </section>
 
         <section>
-          <h2>How to use promises in your own code</h2>
+          <section>
+            <h2>How to use promises in your own code</h2>
+            <h3>Chaining promises</h3>
 
-          <ul>
-            <li>Include rsvp.js from [https://github.com/tildeio/rsvp.js](https://github.com/tildeio/rsvp.js)</li>
-            <li>Return a new RSVP.Promise from your async code, `resolve()`-ing or `reject()`-ing as appropriate</li>
-          </ul>
-        </section>
+            <p>Gotcha: Make sure you return a promise if the code is async.</p>
 
-        <section>
-          <h2>How to use promises in your own code part 2</h2>
+            <pre class='smaller'><code data-trim contenteditable>
+  asyncWithPromise().then( function(){     // happens first
+    return asyncWithPromise();             // happens after the first finishes
+  }).then( function() {
+    return asyncWithPromise();             // happens after the second finishes
+  });
+            </code></pre>
+          </section>
 
-          <p>Example async code</p>
+          <section>
+            <h2>How to use promises in your own code</h2>
+            <h3>Chaining promises with non-promise return values</h3>
 
-          <p>Using rsvp.js</p>
+            <p>It is ok to return non-promise values from non-async code.</p>
 
+            <pre class='smaller'><code data-trim contenteditable>
+  asyncWithPromise().then( function(){     // happens first
+    doSomethingSynchronous();
+    return someValue;                      // not returning a promise
+  }).then( function() {
+    return asyncWithPromise();             // returns a promise, which
+                                           // gets assimilated into the chain.
+                                           // The next 'then' doesn't fire until
+                                           // this promise is resolved.
+
+  }).then( function() {                    // this fires after the asyncWithPromise
+                                           // above resolves.
+    doSomethingElseSynchronous();
+    return someOtherValue;
+  });;
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>How to use promises in your own code</h2>
+            <h3>How return values propagate a chain of `.then()`'s</h3>
+
+            <p>If a `then()`'s success handler returns a promise,
+               the success handler for the next `then()` gets the
+               promise's `resolve()`'d value.
+            </p>
+
+            <p>
+              If a `then's` success handler returns a non-promise,
+              the success handler for the next `then()` gets that same return value
+            </p>
+
+            <pre class='smaller'><code data-trim contenteditable>
+  asyncWithPromise().then( function(successValue){  // successValue is whatever asyncWithPromise `resolve()`'d with
+    return true;
+  }).then( function(successValue) {                 // successValue is true
+    return anotherAsyncWithPromise();
+  }).then( function(successValue) {                 // successValue is whatever anotherAsyncWithPromise `resolve()`'d with
+    return true;
+  });;
+            </code></pre>
+          </section>
         </section>
 
         <section>
