@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8">
 
-    <title>reveal.js - The HTML Presentation Framework</title>
+    <title>Promises using RSVP.js | Cory Forsyth</title>
 
-    <meta name="description" content="A framework for easily creating beautiful presentations using HTML">
-    <meta name="author" content="Hakim El Hattab">
+    <meta name="description" content="A talk explaining how promises work using RSVP.js, by Cory Forsyth">
+    <meta name="author" content="Cory Forsyth">
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -44,7 +44,6 @@
 
     <div class="reveal">
 
-      <!-- Any section element inside of this container is displayed as a slide -->
       <div class="slides">
         <section>
           <h1>Promises, Promises</h1>
@@ -75,15 +74,16 @@
           <h3>What does it look like?</h3>
 
           <pre><code data-trim contenteditable>
+var successHandler = function(successValue){
+  console.log("I am called when the promise successfully resolves.");
+};
+
+var rejectionHandler = function(reason){
+  console.log("I am called when the promise is rejected for 'reason'.");
+};
+
 // doSomethingAsync() returns a Promise
-doSomethingAsync().then(
-  function (successValue) {
-    // succeeded with successValue
-  },
-  function (errorReason) {
-    // failed with errorReason
-  }
-);
+doSomethingAsync().then( successHandler, rejectionHandler );
           </code></pre>
         </section>
 
@@ -162,6 +162,7 @@ xhr.send();
             <h2>Flattening rightward drift</h2>
             <h3>Simple callback-based code</h3>
 
+            <p>Callback version</p>
             <pre><code data-trim contenteditable>
 connectToDb(
   function(connection) { // got connection
@@ -172,6 +173,7 @@ connectToDb(
 );
             </code></pre>
 
+            <p>Promise version</p>
             <pre class='fragment'><code data-trim contenteditable>
 connectToDb().then(
   function(connection){ // got connection
@@ -210,12 +212,13 @@ connectToDb(function(connection) { // got connection
             <h2>Flattening rightward drift</h2>
             <h3>Nested callback-based code</h3>
 
+            <p>Using promises</p>
             <pre class='smaller'><code data-trim contenteditable>
-connectToDb().then(function(connection){
-    return connection.doSomething();
+connectToDb().then(function(connection){ // connectToDb returns a promise
+    return connection.doSomething();     // connection.doSomething returns a promise
 }).then(function(result){
     result.name = 'new name';
-    return result.save();
+    return result.save();                // result.save returns a promise
 }).then(function(){
    console.log('saved successfully.');
  }, function(err){
