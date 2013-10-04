@@ -439,7 +439,8 @@ doSomethingAsync()
 
             <p>
               Normally, a rejected promise will be handled by the
-              first rejection handler.
+              first rejection handler. A thrown exception will be
+              caught and handled by the next rejection handler.
             </p>
             <pre class='smaller'><code data-trim contenteditable>
 doSomethingAsync()
@@ -449,8 +450,7 @@ doSomethingAsync()
     throw e;
   })
   .then( null, function(e){
-    // this code doesn't execute because the promise chain has
-    // already been rejected
+    console.error("I will execute also, because e was thrown.");
   });
             </code></pre>
           </section>
@@ -464,8 +464,8 @@ doSomethingAsync()
             </ul>
 
             <p>
-            But if you use RSVP.rethrow() then the rejection propagates
-            to subsequent rejection handlers.
+            But if you use RSVP.rethrow() then the error makes it out of
+            the promise chain, where you can see it in your console.
             </p>
 
             <pre class='smaller'><code data-trim contenteditable>
@@ -474,10 +474,11 @@ doSomethingAsync()
   .then( null, function(e){
     console.error("The error is caught and handled here.");
     RSVP.rethrow(e);
-  })
-  .then( null, function(e){
-    console.error("This rejection handler executes, also.");
   });
+
+  // the thrown error will
+  // exit the promise chain and
+  // the console will now display this error
             </code></pre>
 
             <p>
